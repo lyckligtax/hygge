@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+ROOT_DIR=$( git rev-parse --show-toplevel)
+GIT_DIR="$ROOT_DIR/.git"
+
+echo "Installing git-hooks"
+rm -rf "$GIT_DIR/hooks"
+ln -s "$ROOT_DIR/dev/git_hooks/" "$GIT_DIR/hooks"

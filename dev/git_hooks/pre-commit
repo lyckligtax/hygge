@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+ROOT_DIR=$( git rev-parse --show-toplevel)
+RUST_SRC="$ROOT_DIR/src"
+
+pushd $RUST_SRC
+cargo clippy --all-targets --all-features -- -D warnings
+cargo fmt --all --check

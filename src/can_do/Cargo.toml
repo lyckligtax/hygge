@@ -1,0 +1,8 @@
+[package]
+name = "can_do"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+arena = { path = "../arena" }
+thiserror = { workspace = true }

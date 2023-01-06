@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "arena",
+    "can_do",
+    "permission",
+    "main"
+]
+
+[workspace.dependencies]
+thiserror = "1.0.38"
