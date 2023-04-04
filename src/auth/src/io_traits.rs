@@ -11,19 +11,20 @@ pub trait AccountIO {
     type InternalId;
     type ExternalId;
 
-    fn insert(
+    // TODO: documentation
+    async fn insert(
         &mut self,
         id: Self::ExternalId,
         password: &[u8],
     ) -> Result<Self::InternalId, AccountError>;
 
-    fn get(
+    async fn get(
         &self,
         id: &Self::ExternalId,
     ) -> Result<&Account<Self::InternalId, Self::ExternalId>, AccountError>;
 
     /// returns the account if the password matches
-    fn get_verified(
+    async fn get_verified(
         &self,
         id: &Self::ExternalId,
         password: &[u8],
@@ -44,10 +45,17 @@ pub trait AuthenticationIO {
     type LoginToken;
     /// an internal id may be inserted multiple times for different devices  
     /// **must** return a new login token each time
-    fn insert(&mut self, id: &Self::InternalId) -> Result<Self::LoginToken, AuthenticationError>;
-    fn remove(&mut self, id: &Self::LoginToken) -> Result<(), AuthenticationError>;
-    fn get(&self, id: &Self::LoginToken) -> Option<&Authentication<Self::InternalId>>;
-    fn get_mut(&mut self, id: &Self::LoginToken) -> Option<&mut Authentication<Self::InternalId>>;
+    async fn insert(
+        &mut self,
+        id: &Self::InternalId,
+    ) -> Result<Self::LoginToken, AuthenticationError>;
+    // TODO: documentation
+    async fn remove(&mut self, id: &Self::LoginToken) -> Result<(), AuthenticationError>;
+    async fn get(&self, id: &Self::LoginToken) -> Option<&Authentication<Self::InternalId>>;
+    async fn get_mut(
+        &mut self,
+        id: &Self::LoginToken,
+    ) -> Option<&mut Authentication<Self::InternalId>>;
 }
 pub enum AuthenticationError {
     AlreadyExists,

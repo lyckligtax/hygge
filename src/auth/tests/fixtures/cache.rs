@@ -1,5 +1,6 @@
-use auth::{Authentication, AuthenticationError, AuthenticationIO};
 use std::collections::HashMap;
+
+use auth::{Authentication, AuthenticationError, AuthenticationIO};
 
 pub struct Cache<InternalId, CacheId> {
     data: HashMap<CacheId, Authentication<InternalId>>,
@@ -9,22 +10,23 @@ pub struct Cache<InternalId, CacheId> {
 impl AuthenticationIO for Cache<u32, u32> {
     type InternalId = u32;
     type LoginToken = u32;
-    fn insert(&mut self, internal_id: &u32) -> Result<u32, AuthenticationError> {
+
+    async fn insert(&mut self, internal_id: &u32) -> Result<u32, AuthenticationError> {
         let id = self.internal_id;
         self.internal_id += 1;
         self.data.insert(id, Authentication::from(*internal_id));
         Ok(id)
     }
 
-    fn remove(&mut self, _id: &u32) -> Result<(), AuthenticationError> {
+    async fn remove(&mut self, _id: &u32) -> Result<(), AuthenticationError> {
         todo!()
     }
 
-    fn get(&self, id: &u32) -> Option<&Authentication<u32>> {
+    async fn get(&self, id: &u32) -> Option<&Authentication<u32>> {
         self.data.get(id)
     }
 
-    fn get_mut(&mut self, id: &u32) -> Option<&mut Authentication<u32>> {
+    async fn get_mut(&mut self, id: &u32) -> Option<&mut Authentication<u32>> {
         self.data.get_mut(id)
     }
 }

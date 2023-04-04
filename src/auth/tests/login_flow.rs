@@ -1,13 +1,17 @@
-mod account;
-mod cache;
+#![allow(incomplete_features)]
+#![feature(async_fn_in_trait)]
 
-use crate::account::AccountProvider;
-use crate::cache::Cache;
-use auth::AuthProvider;
 use std::time::Duration;
 
-#[test]
-fn test_login() {
+use auth::AuthProvider;
+
+use crate::fixtures::AccountProvider;
+use crate::fixtures::Cache;
+
+mod fixtures;
+
+#[tokio::test]
+async fn test_login() {
     let persistence = AccountProvider::default();
     let cache = Cache::default();
     let mut auth = AuthProvider::new(persistence, cache, Duration::from_secs(3600));
@@ -17,8 +21,15 @@ fn test_login() {
 
     let internal_id = auth
         .create_account(user_id, password)
+        .await
         .expect("Expected Account to be created");
-    let login_token = auth.login(user_id, password).expect("Expected LoginToken");
-    let internal_id_verified = auth.verify_token(login_token).expect("Expected InternalId");
+    let login_token = auth
+        .login(user_id, password)
+        .await
+        .expect("Expected LoginToken");
+    let internal_id_verified = auth
+        .verify_token(login_token)
+        .await
+        .expect("Expected InternalId");
     assert_eq!(internal_id, internal_id_verified)
 }

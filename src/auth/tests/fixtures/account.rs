@@ -14,7 +14,7 @@ impl AccountIO for AccountProvider<u32, u32> {
     type InternalId = u32;
     type ExternalId = u32;
 
-    fn insert(&mut self, id: u32, password: &[u8]) -> Result<u32, AccountError> {
+    async fn insert(&mut self, id: u32, password: &[u8]) -> Result<u32, AccountError> {
         let salt = SaltString::generate(&mut OsRng);
         let Ok(password_hash) = self.argon.hash_password(password, &salt) else {
             return Err(CouldNotCreate);
@@ -35,16 +35,16 @@ impl AccountIO for AccountProvider<u32, u32> {
         }
     }
 
-    fn get(&self, id: &u32) -> Result<&Account<u32, u32>, AccountError> {
+    async fn get(&self, id: &u32) -> Result<&Account<u32, u32>, AccountError> {
         self.data.get(id).ok_or(AccountError::NotFound)
     }
 
-    fn get_verified(
+    async fn get_verified(
         &self,
         id: &Self::ExternalId,
         password: &[u8],
     ) -> Result<&Account<Self::InternalId, Self::ExternalId>, AccountError> {
-        let user_account = self.get(id)?;
+        let user_account = self.get(id).await?;
         let Ok(parsed_hash) = PasswordHash::new(&user_account.password_hash) else {
             return Err(Credentials); //TODO: better error
         };
