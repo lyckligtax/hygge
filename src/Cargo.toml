@@ -1,10 +1,12 @@
 [workspace]
 members = [
     "arena",
+    "auth",
     "can_do",
-    "permission",
-    "main"
+    "main",
+    "permission"
 ]
 
 [workspace.dependencies]
 thiserror = "1.0.38"
+async-trait = "0.1.61"
