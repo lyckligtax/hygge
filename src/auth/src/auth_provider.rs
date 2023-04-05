@@ -61,7 +61,10 @@ where
         id: Account::ExternalId,
         password: &[u8],
     ) -> Result<Authentication::LoginToken, AuthError> {
-        let user_account = self.account_provider.get_verified(&id, password).await?;
+        let user_account = self.account_provider.get(&id).await?;
+        self.account_provider
+            .verify_password(&user_account.password_hash, password)
+            .await?;
 
         Ok(self
             .authentication_cache

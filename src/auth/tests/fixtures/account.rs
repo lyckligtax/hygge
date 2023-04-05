@@ -39,19 +39,16 @@ impl AccountIO for AccountProvider<u32, u32> {
         self.data.get(id).ok_or(AccountError::NotFound)
     }
 
-    async fn get_verified(
+    async fn verify_password(
         &self,
-        id: &Self::ExternalId,
+        password_hash: &str,
         password: &[u8],
-    ) -> Result<&Account<Self::InternalId, Self::ExternalId>, AccountError> {
-        let user_account = self.get(id).await?;
-        let Ok(parsed_hash) = PasswordHash::new(&user_account.password_hash) else {
-            return Err(Credentials); //TODO: better error
-        };
-        if self.argon.verify_password(password, &parsed_hash).is_err() {
-            return Err(Credentials);
-        }
-        Ok(user_account)
+    ) -> Result<(), AccountError> {
+        let parsed_hash = PasswordHash::new(password_hash).or(Err(Credentials))?;
+
+        self.argon
+            .verify_password(password, &parsed_hash)
+            .or(Err(Credentials))
     }
 }
 

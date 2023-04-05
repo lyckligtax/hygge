@@ -23,12 +23,7 @@ pub trait AccountIO {
         id: &Self::ExternalId,
     ) -> Result<&Account<Self::InternalId, Self::ExternalId>, AccountError>;
 
-    /// returns the account if the password matches
-    async fn get_verified(
-        &self,
-        id: &Self::ExternalId,
-        password: &[u8],
-    ) -> Result<&Account<Self::InternalId, Self::ExternalId>, AccountError>;
+    async fn verify_password(&self, hash: &str, password: &[u8]) -> Result<(), AccountError>;
 }
 
 pub enum AccountError {
