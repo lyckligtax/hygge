@@ -10,3 +10,4 @@ members = [
 [workspace.dependencies]
 thiserror = "1.0.38"
 tokio = { version = "1", features = ["full"] }
+mockall = "0.11.4"

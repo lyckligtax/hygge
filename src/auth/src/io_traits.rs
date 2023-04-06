@@ -1,28 +1,40 @@
 use crate::account::Account;
-use crate::Authentication;
+#[cfg(test)]
+use mockall::{automock, predicate::*};
+use std::time::Instant;
 
 /// store and retrieve accounts by their external id  
 /// creates a mapping from an external to an internal id
 ///
 /// internal ids should be used throughout other parts of the application
 ///
-/// eg: email (external) -> UUID (internal)
+/// implementors may choose their own storage solutions and how to handle sensitive data
+#[cfg_attr(test, automock(type InternalId=u32; type ExternalId=u32;))]
 pub trait AccountIO {
     type InternalId;
     type ExternalId;
 
-    // TODO: documentation
-    async fn insert(
+    /// create a new account identified by an external_id and a password
+    ///
+    /// password SHOULD BE hashed+salted by implementors
+    async fn create(
         &mut self,
         id: Self::ExternalId,
         password: &[u8],
     ) -> Result<Self::InternalId, AccountError>;
 
+    /// retrieve an account identified by its external_id
     async fn get(
         &self,
         id: &Self::ExternalId,
-    ) -> Result<&Account<Self::InternalId, Self::ExternalId>, AccountError>;
+    ) -> Result<Account<Self::InternalId, Self::ExternalId>, AccountError>;
 
+    /// remove an account identified by its internal_id
+    async fn remove(&mut self, id: &Self::InternalId) -> Result<(), AccountError>;
+
+    /// verify a given hash against a password
+    ///
+    /// implementors SHOULD save the password hashed+salted
     async fn verify_password(&self, hash: &str, password: &[u8]) -> Result<(), AccountError>;
 }
 
@@ -35,7 +47,8 @@ pub enum AccountError {
 
 /// store and retrieve authenticated login tokens  
 /// creates new login tokens for a given internal id
-pub trait AuthenticationIO {
+#[cfg_attr(test, automock(type InternalId=u32;type LoginToken=u32;))]
+pub trait LoginTokenIO {
     type InternalId;
     type LoginToken;
     /// an internal id may be inserted multiple times for different devices  
@@ -44,14 +57,21 @@ pub trait AuthenticationIO {
         &mut self,
         id: &Self::InternalId,
     ) -> Result<Self::LoginToken, AuthenticationError>;
+
     // TODO: documentation
     async fn remove(&mut self, id: &Self::LoginToken) -> Result<(), AuthenticationError>;
-    async fn get(&self, id: &Self::LoginToken) -> Option<&Authentication<Self::InternalId>>;
-    async fn get_mut(
-        &mut self,
-        id: &Self::LoginToken,
-    ) -> Option<&mut Authentication<Self::InternalId>>;
+
+    async fn remove_all(&mut self, id: &Self::InternalId) -> Result<(), AuthenticationError>;
+
+    async fn get(&self, id: &Self::LoginToken) -> Option<(Self::InternalId, Instant)>;
+
+    async fn last_seen(
+        &self,
+        token: &Self::LoginToken,
+        last_seen: Instant,
+    ) -> Result<(), AuthenticationError>;
 }
+
 pub enum AuthenticationError {
     AlreadyExists,
     NotFound,
