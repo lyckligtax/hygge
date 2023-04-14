@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15.2-alpine
+    restart: always
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - ./docker_mounts/db:/var/lib/postgresql/data
