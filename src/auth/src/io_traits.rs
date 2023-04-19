@@ -1,7 +1,6 @@
 use crate::account::Account;
 #[cfg(test)]
 use mockall::{automock, predicate::*};
-use std::time::Instant;
 
 /// store and retrieve accounts by their external id  
 /// creates a mapping from an external to an internal id
@@ -63,13 +62,7 @@ pub trait LoginTokenIO {
 
     async fn remove_all(&mut self, id: &Self::InternalId) -> Result<(), AuthenticationError>;
 
-    async fn get(&self, id: &Self::LoginToken) -> Option<(Self::InternalId, Instant)>;
-
-    async fn last_seen(
-        &self,
-        token: &Self::LoginToken,
-        last_seen: Instant,
-    ) -> Result<(), AuthenticationError>;
+    async fn get(&self, id: &Self::LoginToken) -> Option<Self::InternalId>;
 }
 
 pub enum AuthenticationError {

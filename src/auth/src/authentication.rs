@@ -1,13 +1,10 @@
-use std::time::{Duration, Instant};
-
-use crate::auth_provider_error::AuthError;
+use crate::authentication_error::AuthError;
 use crate::{AccountError, AccountIO, AccountStatus, LoginTokenIO};
 
 // TODO: documentation
 pub struct Authentication<Accounts: AccountIO, Tokens: LoginTokenIO> {
     tokens: Tokens,
     accounts: Accounts,
-    login_ttl: Duration,
 }
 
 impl<InternalId, ExternalId, LoginToken, Accounts, Tokens> Authentication<Accounts, Tokens>
@@ -17,12 +14,8 @@ where
     Accounts: AccountIO<InternalId = InternalId, ExternalId = ExternalId>,
     Tokens: LoginTokenIO<InternalId = InternalId, LoginToken = LoginToken>,
 {
-    pub fn new(accounts: Accounts, tokens: Tokens, login_ttl: Duration) -> Self {
-        Self {
-            tokens,
-            accounts,
-            login_ttl,
-        }
+    pub fn new(accounts: Accounts, tokens: Tokens) -> Self {
+        Self { tokens, accounts }
     }
 
     /// create a new account identified by an external_id and a password
@@ -102,21 +95,10 @@ where
         &mut self,
         login_token: Tokens::LoginToken,
     ) -> Result<InternalId, AuthError> {
-        let (internal_id, last_seen) = self
-            .tokens
+        self.tokens
             .get(&login_token)
             .await
-            .ok_or(AuthError::NotLoggedIn)?;
-
-        let now = Instant::now();
-
-        if last_seen - now < self.login_ttl {
-            self.tokens.last_seen(&login_token, now);
-            Ok(internal_id)
-        } else {
-            let _ = self.tokens.remove(&login_token).await;
-            Err(AuthError::Expired)
-        }
+            .ok_or(AuthError::NotLoggedIn)
     }
 }
 
@@ -125,7 +107,6 @@ mod tests {
     use crate::Authentication;
     use crate::{Account, AccountStatus, MockAccountIO};
     use crate::{AccountError, MockLoginTokenIO};
-    use std::time::{Duration, Instant};
 
     #[tokio::test]
     async fn test_create_account() {
@@ -138,7 +119,7 @@ mod tests {
             .returning(|_| Err(AccountError::NotFound));
         accounts.expect_create().returning(|_, _| Ok(9u32));
 
-        let mut auth = Authentication::new(accounts, cache, Duration::from_secs(3600));
+        let mut auth = Authentication::new(accounts, cache);
 
         auth.create_account(1u32, b"test1234")
             .await
@@ -160,7 +141,7 @@ mod tests {
             })
         });
 
-        let mut auth = Authentication::new(accounts, cache, Duration::from_secs(3600));
+        let mut auth = Authentication::new(accounts, cache);
 
         auth.create_account(1u32, b"test1234")
             .await
@@ -182,7 +163,7 @@ mod tests {
         accounts.expect_verify_password().returning(|_, _| Ok(()));
         cache.expect_insert().returning(|_| Ok(18u32));
 
-        let mut auth = Authentication::new(accounts, cache, Duration::from_secs(3600));
+        let mut auth = Authentication::new(accounts, cache);
 
         auth.login(1u32, b"test1234")
             .await
@@ -198,7 +179,7 @@ mod tests {
             .expect_get()
             .returning(|_| Err(AccountError::NotFound)); // the given user does not exist
 
-        let mut auth = Authentication::new(accounts, cache, Duration::from_secs(3600));
+        let mut auth = Authentication::new(accounts, cache);
 
         auth.login(1u32, b"test1234")
             .await
@@ -209,12 +190,9 @@ mod tests {
     async fn test_verify_token() {
         let accounts = MockAccountIO::new();
         let mut cache = MockLoginTokenIO::new();
-        cache
-            .expect_get()
-            .returning(|_| Some((9u32, Instant::now())));
-        cache.expect_last_seen().returning(|_, _| Ok(()));
+        cache.expect_get().returning(|_| Some(9u32));
 
-        let mut auth = Authentication::new(accounts, cache, Duration::from_secs(3600));
+        let mut auth = Authentication::new(accounts, cache);
 
         auth.verify_token(18u32).await.expect("Expected InternalId");
     }
@@ -226,7 +204,7 @@ mod tests {
         let mut cache = MockLoginTokenIO::new();
         cache.expect_get().returning(|_| None);
 
-        let mut auth = Authentication::new(accounts, cache, Duration::from_secs(3600));
+        let mut auth = Authentication::new(accounts, cache);
 
         auth.verify_token(18u32).await.expect("Expected InternalId");
     }

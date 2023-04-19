@@ -9,8 +9,6 @@ pub enum AuthError {
     Credentials,
     #[error("User is not logged in")]
     NotLoggedIn,
-    #[error("Token is expired")]
-    Expired,
     #[error("Could not cache the authentication")]
     Caching,
 }
