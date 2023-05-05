@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 
-ROOT_DIR=$(git rev-parse --show-toplevel)
-DOCKER_MOUNTS="$ROOT_DIR/dev/docker_mounts"
+set -e
+SCRIPT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+source "$SCRIPT_DIR/dir"
+
+DOCKER_MOUNTS="$DEV_DIR/docker_mounts"
 
 echo "Creating docker images"
 mkdir -p $DOCKER_MOUNTS
 
 echo "Starting Docker environment with docker compose"
-cd $ROOT_DIR/dev/
+cd $DEV_DIR
 docker compose -f docker-compose.yml start

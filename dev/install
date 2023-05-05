@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 
 set -e
-
-ROOT_DIR=$(git rev-parse --show-toplevel)
-GIT_DIR="$ROOT_DIR/.git"
+SCRIPT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+source "$SCRIPT_DIR/dir"
 
 echo "Installing git-hooks"
 rm -rf "$GIT_DIR/hooks"
-ln -s "$ROOT_DIR/dev/git_hooks/" "$GIT_DIR/hooks"
+ln -s "$DEV_DIR/git_hooks/" "$GIT_DIR/hooks"
 
 echo "Testing docker compose"
 docker compose -h > /dev/null
+
+echo "Testing for sqlx-cli"
+cargo sqlx -V  > /dev/null

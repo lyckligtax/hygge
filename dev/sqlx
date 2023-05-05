@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+SCRIPT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+source "$SCRIPT_DIR/dir"
+source "$DEV_DIR/.env"
+
+cd $ROOT_DIR
+
+cargo sqlx $@ --database-url="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB"
