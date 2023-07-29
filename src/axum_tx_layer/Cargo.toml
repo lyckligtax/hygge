@@ -1,0 +1,14 @@
+[package]
+name = "axum_tx_layer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { workspace = true, features = ['macros'] }
+tokio = { workspace = true }
+parking_lot = "0.12.1"
+redis = { workspace = true, features = ["r2d2", "aio", "tokio"] }
+r2d2 = "0.8.10"
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }

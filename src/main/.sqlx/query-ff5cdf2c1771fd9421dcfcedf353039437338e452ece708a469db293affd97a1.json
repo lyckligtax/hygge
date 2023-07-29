@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id as id_internal, id_external, hash, status as \"status: ProviderAccountStatus\" from public.auth WHERE id_external = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id_internal",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "id_external",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "status: ProviderAccountStatus",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ff5cdf2c1771fd9421dcfcedf353039437338e452ece708a469db293affd97a1"
+}

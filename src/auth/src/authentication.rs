@@ -30,7 +30,7 @@ where
         password: &str,
         ctx: &mut AccountCtx,
     ) -> Result<InternalId, AuthError> {
-        match self.accounts.get(&id, ctx).await {
+        match self.accounts.get(id, ctx).await {
             Err(AccountError::NotFound) => {}
             Ok(_) | Err(_) => {
                 return Err(AuthError::CouldNotCreate);
@@ -71,7 +71,7 @@ where
         account_ctx: &mut AccountCtx,
         login_ctx: &mut LoginCtx,
     ) -> Result<Tokens::LoginToken, AuthError> {
-        let user_account = self.accounts.get(&id, account_ctx).await?;
+        let user_account = self.accounts.get(id, account_ctx).await?;
         match user_account.status {
             AccountStatus::Active => {}
             AccountStatus::Inactive | AccountStatus::Removed => {
@@ -97,7 +97,7 @@ where
         login_ctx: &mut LoginCtx,
     ) -> Result<(), AccountError> {
         self.tokens
-            .remove(&login_token, login_ctx)
+            .remove(login_token, login_ctx)
             .await
             .or(Err(AccountError::Credentials))
     }
@@ -113,7 +113,7 @@ where
         login_ctx: &mut LoginCtx,
     ) -> Result<InternalId, AuthError> {
         self.tokens
-            .get(&login_token, login_ctx)
+            .get(login_token, login_ctx)
             .await
             .ok_or(AuthError::NotLoggedIn)
     }
@@ -127,7 +127,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_account() {
-        let mut ctx = ();
         let mut accounts = MockAccountIO::new();
         let cache = MockLoginTokenIO::new();
 
@@ -139,14 +138,13 @@ mod tests {
 
         let mut auth = Authentication::new(accounts, cache);
 
-        auth.create_account(&1u32, "test1234", &mut ctx)
+        auth.create_account(&1u32, "test1234", &mut ())
             .await
             .expect("Expected Account to be created");
     }
     #[tokio::test]
     #[should_panic(expected = "Expected Account to be created: CouldNotCreate")]
     async fn test_create_account_already_exists() {
-        let mut ctx = ();
         let mut accounts = MockAccountIO::new();
         let cache = MockLoginTokenIO::new();
 
@@ -162,15 +160,13 @@ mod tests {
 
         let mut auth = Authentication::new(accounts, cache);
 
-        auth.create_account(&1u32, "test1234", &mut ctx)
+        auth.create_account(&1u32, "test1234", &mut ())
             .await
             .expect("Expected Account to be created");
     }
 
     #[tokio::test]
     async fn test_login() {
-        let mut account_ctx = ();
-        let mut login_ctx = ();
         let mut accounts = MockAccountIO::new();
         let mut cache = MockLoginTokenIO::new();
         accounts.expect_get().returning(|_, _| {
@@ -188,7 +184,7 @@ mod tests {
 
         let mut auth = Authentication::new(accounts, cache);
 
-        auth.login(&1u32, "test1234", &mut account_ctx, &mut login_ctx)
+        auth.login(&1u32, "test1234", &mut (), &mut ())
             .await
             .expect("Expected LoginToken");
     }
@@ -196,8 +192,6 @@ mod tests {
     #[tokio::test]
     #[should_panic(expected = "Expected LoginToken: Credentials")]
     async fn test_login_failure() {
-        let mut account_ctx = ();
-        let mut login_ctx = ();
         let mut accounts = MockAccountIO::new();
         let cache = MockLoginTokenIO::new();
         accounts
@@ -206,21 +200,20 @@ mod tests {
 
         let mut auth = Authentication::new(accounts, cache);
 
-        auth.login(&1u32, "test1234", &mut account_ctx, &mut login_ctx)
+        auth.login(&1u32, "test1234", &mut (), &mut ())
             .await
             .expect("Expected LoginToken");
     }
 
     #[tokio::test]
     async fn test_verify_token() {
-        let mut login_ctx = ();
         let accounts = MockAccountIO::new();
         let mut cache = MockLoginTokenIO::new();
         cache.expect_get().returning(|_, _| Some(9u32));
 
-        let mut auth = Authentication::new(accounts, cache);
+        let auth = Authentication::new(accounts, cache);
 
-        auth.verify_token(&18u32, &login_ctx)
+        auth.verify_token(&18u32, &mut ())
             .await
             .expect("Expected InternalId");
     }
@@ -228,14 +221,13 @@ mod tests {
     #[tokio::test]
     #[should_panic(expected = "Expected InternalId: NotLoggedIn")]
     async fn test_verify_token_failure() {
-        let mut login_ctx = ();
         let accounts = MockAccountIO::new();
         let mut cache = MockLoginTokenIO::new();
         cache.expect_get().returning(|_, _| None);
 
-        let mut auth = Authentication::new(accounts, cache);
+        let auth = Authentication::new(accounts, cache);
 
-        auth.verify_token(&18u32, &login_ctx)
+        auth.verify_token(&18u32, &mut ())
             .await
             .expect("Expected InternalId");
     }

@@ -7,8 +7,8 @@ source "$SCRIPT_DIR/dir"
 DOCKER_MOUNTS="$DEV_DIR/docker_mounts"
 
 echo "Creating docker images"
-mkdir -p $DOCKER_MOUNTS
+mkdir -p "$DOCKER_MOUNTS"
 
 echo "Starting Docker environment with docker compose"
-cd $DEV_DIR
+cd "$DEV_DIR"
 docker compose -f docker-compose.yml start

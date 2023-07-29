@@ -6,3 +6,23 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dotenvy = "0.15.7"
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres", "macros", "uuid", "time"] }
+argon2 = "0.5.0"
+axum = { workspace = true, features = ['macros'] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.16"
+tokio = { workspace = true }
+uuid = { workspace = true, features = ["v4", "fast-rng", "serde"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+auth = { path = "../auth" }
+redis = { workspace = true, features = ["r2d2", "aio", "tokio", "connection-manager"] }
+r2d2 = "0.8.10"
+axum_tx_layer =  { path = "../axum_tx_layer" }
+# TODO: kann das weg? brauchen wir das nur für axum sachen? Dann axum eigene implementation nehmen
+async-trait = "0.1.68"
+
+[dev-dependencies]
+httpc-test = "0.1.1"
+anyhow = "1.0.70"

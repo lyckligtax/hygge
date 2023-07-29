@@ -1,8 +1,12 @@
 version: '3.8'
 services:
   db:
-    image: postgres:15.2-alpine
+    image: postgres:15.3-alpine
     restart: always
+    environment:
+      POSTGRES_PASSWORD: test1234
+      POSTGRES_USER: hygge
+      POSTGRES_DB: hygge
     ports:
       - "5432:5432"
     volumes:
