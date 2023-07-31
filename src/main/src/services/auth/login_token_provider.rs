@@ -1,9 +1,9 @@
-use redis::{cmd, Commands};
+use deadpool_redis::redis::{cmd, AsyncCommands};
 use std::str::FromStr;
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::helper::RedisConnection;
+use crate::types::RedisConnection;
 use auth::{AuthenticationError, LoginTokenIO};
 
 #[derive(Default, Clone)]
@@ -23,7 +23,6 @@ impl LoginTokenIO for LoginTokenProvider {
     ) -> Result<Self::LoginToken, AuthenticationError> {
         let login_token = Uuid::new_v4();
         if redis::pipe()
-            .atomic()
             .cmd("SET")
             .arg(LoginTokenProvider::create_key(&login_token))
             .arg(internal_id.to_string())
@@ -39,7 +38,8 @@ impl LoginTokenIO for LoginTokenProvider {
             .arg("EX")
             .arg(self.ttl)
             .ignore()
-            .query::<()>(ctx)
+            .query_async::<_, ()>(ctx)
+            .await
             .is_ok()
         {
             Ok(login_token)
@@ -54,7 +54,8 @@ impl LoginTokenIO for LoginTokenProvider {
         ctx: &mut Self::LoginCtx,
     ) -> Result<(), AuthenticationError> {
         if ctx
-            .del::<String, ()>(LoginTokenProvider::create_key(login_token))
+            .del::<_, ()>(LoginTokenProvider::create_key(login_token))
+            .await
             .is_ok()
         {
             Ok(())
@@ -73,13 +74,14 @@ impl LoginTokenIO for LoginTokenProvider {
             .arg(LoginTokenProvider::create_reverse_key_match(internal_id))
             .cursor_arg(0)
             .clone()
-            .iter::<String>(ctx)
+            .iter_async::<String>(ctx)
+            .await
         else {
             return Err(AuthenticationError::IO);
         };
 
         let mut keys_to_remove = &mut cmd("DEL");
-        for key in iter.by_ref() {
+        while let Some(key) = iter.next_item().await {
             let p = key.split(':').last().expect("expected to get uuid str");
             let login_token = Uuid::from_str(p).expect("expected to get uuid");
             keys_to_remove = keys_to_remove.arg(key);
@@ -88,7 +90,7 @@ impl LoginTokenIO for LoginTokenProvider {
 
         drop(iter);
 
-        if keys_to_remove.query::<()>(ctx).is_ok() {
+        if keys_to_remove.query_async::<_, ()>(ctx).await.is_ok() {
             Ok(())
         } else {
             Err(AuthenticationError::IO)
@@ -100,7 +102,10 @@ impl LoginTokenIO for LoginTokenProvider {
         login_token: &Self::LoginToken,
         ctx: &mut Self::LoginCtx,
     ) -> Option<Self::InternalId> {
-        if let Ok(res) = ctx.get::<String, String>(LoginTokenProvider::create_key(login_token)) {
+        if let Ok(res) = ctx
+            .get::<_, String>(LoginTokenProvider::create_key(login_token))
+            .await
+        {
             if let Ok(internal_id) = Uuid::from_str(&res) {
                 return Some(internal_id);
             }

@@ -1,23 +1,25 @@
-use crate::{Auth, GlobalState};
+use crate::types::{Auth, Services};
+use axum::http::StatusCode;
+use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
 use axum_tx_layer::Transaction;
 use serde::Deserialize;
 use sqlx::Postgres;
 
-pub fn auth_router() -> Router<GlobalState> {
+pub fn auth_router() -> Router<Services> {
     Router::new()
         .route("/login", post(login))
         .route("/create_account", post(create))
 }
 
-#[axum::debug_handler(state = GlobalState)]
+#[axum::debug_handler(state = Services)]
 async fn login(
     State(mut auth): State<Auth>,
-    Transaction(mut tx): Transaction<sqlx::Transaction<'static, Postgres>>,
-    Transaction(mut redis): Transaction<r2d2::PooledConnection<redis::Client>>,
+    mut tx: Transaction<sqlx::Transaction<'static, Postgres>>,
+    mut redis: Transaction<deadpool_redis::Connection>,
     Json(login_data): Json<LoginPayload>,
-) -> impl IntoResponse {
-    let id = auth
+) -> Response {
+    if let Ok(id) = auth
         .login(
             &login_data.external_id,
             &login_data.password,
@@ -25,23 +27,27 @@ async fn login(
             &mut redis,
         )
         .await
-        .expect("TODO: panic message");
-
-    id.to_string().into_response()
+    {
+        (StatusCode::OK, id.to_string()).into_response()
+    } else {
+        (StatusCode::FORBIDDEN).into_response()
+    }
 }
 
-#[axum::debug_handler(state = GlobalState)]
+#[axum::debug_handler(state = Services)]
 async fn create(
     State(mut auth): State<Auth>,
-    Transaction(mut tx): Transaction<sqlx::Transaction<'static, Postgres>>,
+    mut tx: Transaction<sqlx::Transaction<'static, Postgres>>,
     Json(login_data): Json<LoginPayload>,
-) -> String {
-    let id = auth
+) -> Response {
+    if let Ok(id) = auth
         .create_account(&login_data.external_id, &login_data.password, &mut tx)
         .await
-        .expect("TODO: panic message");
-
-    id.to_string()
+    {
+        (StatusCode::CREATED, id.to_string()).into_response()
+    } else {
+        (StatusCode::PRECONDITION_FAILED).into_response()
+    }
 }
 
 #[derive(Debug, Deserialize)]

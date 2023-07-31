@@ -7,20 +7,33 @@ use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::Response;
 use axum::{async_trait, http};
+use std::ops::DerefMut;
 
-type RedisTransaction = r2d2::PooledConnection<redis::Client>;
+type RedisTransaction = deadpool_redis::Connection;
 
 #[async_trait]
-impl TxPool for Pool<r2d2::Pool<redis::Client>> {
+impl TxPool for Pool<deadpool_redis::Pool> {
     type Tx = RedisTransaction;
 
     async fn begin(&mut self) -> Option<Self::Tx> {
-        todo!()
+        if let Ok(mut conn) = self.0.get().await {
+            if redis::cmd("MULTI")
+                .query_async::<_, ()>(conn.deref_mut())
+                .await
+                .is_ok()
+            {
+                Some(conn)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 
 pub async fn tx_layer<B>(
-    State(pool): State<r2d2::Pool<redis::Client>>,
+    State(pool): State<deadpool_redis::Pool>,
     mut request: Request<B>,
     next: Next<B>,
 ) -> Response {
@@ -39,7 +52,7 @@ pub async fn tx_layer<B>(
 impl TxSlot<RedisTransaction> {
     pub(crate) fn bind(
         extensions: &mut http::Extensions,
-        pool: Pool<r2d2::Pool<redis::Client>>,
+        pool: Pool<deadpool_redis::Pool>,
     ) -> Self {
         let (slot, tx) = Slot::new_leased(None);
         extensions.insert(Lazy { pool, tx });
@@ -47,16 +60,22 @@ impl TxSlot<RedisTransaction> {
     }
 
     pub(crate) async fn commit(self) -> Result<(), ()> {
-        if let Some(mut _tx) = self.0.into_inner().flatten().and_then(Slot::into_inner) {
-            todo!("Committing Redis Tx...");
+        if let Some(mut tx) = self.0.into_inner().flatten().and_then(Slot::into_inner) {
+            redis::cmd("EXEC")
+                .query_async(&mut tx)
+                .await
+                .map_err(|_| ())
         } else {
             Ok(())
         }
     }
 
     pub(crate) async fn rollback(self) -> Result<(), ()> {
-        if let Some(mut _tx) = self.0.into_inner().flatten().and_then(Slot::into_inner) {
-            todo!("Rolling back Redis Tx...");
+        if let Some(mut tx) = self.0.into_inner().flatten().and_then(Slot::into_inner) {
+            redis::cmd("DISCARD")
+                .query_async(&mut tx)
+                .await
+                .map_err(|_| ())
         } else {
             Ok(())
         }
@@ -68,8 +87,7 @@ impl<S: Sized> FromRequestParts<S> for Transaction<RedisTransaction> {
     type Rejection = ();
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let ext: &mut Lazy<Pool<r2d2::Pool<redis::Client>>> =
-            parts.extensions.get_mut().ok_or(())?;
+        let ext: &mut Lazy<Pool<deadpool_redis::Pool>> = parts.extensions.get_mut().ok_or(())?;
         let tx = ext.get_or_begin().await?;
 
         Ok(Self(tx))

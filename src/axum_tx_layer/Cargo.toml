@@ -9,6 +9,6 @@ edition = "2021"
 axum = { workspace = true, features = ['macros'] }
 tokio = { workspace = true }
 parking_lot = "0.12.1"
-redis = { workspace = true, features = ["r2d2", "aio", "tokio"] }
-r2d2 = "0.8.10"
+redis = { workspace = true, features = ["aio", "tokio"] }
+deadpool-redis = "0.12.0"
 sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }

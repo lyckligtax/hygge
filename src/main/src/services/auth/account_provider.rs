@@ -1,8 +1,6 @@
 use auth::{Account, AccountError, AccountIO};
-use std::sync::OnceLock;
 
-use crate::auth::account::ProviderAccount;
-use crate::auth::account::ProviderAccountStatus;
+use super::account::{ProviderAccount, ProviderAccountStatus};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -10,16 +8,19 @@ use argon2::{
 use sqlx::PgConnection;
 use uuid::Uuid;
 
-static ARGON2: OnceLock<Argon2> = OnceLock::new();
-
-#[derive(Clone, Default)]
-pub struct AccountProvider {}
+#[derive(Clone)]
+pub struct AccountProvider {
+    hasher: Argon2<'static>,
+}
 
 impl AccountProvider {
-    pub fn hasher(&self) -> &'static Argon2<'static> {
-        ARGON2.get_or_init(Argon2::default)
+    pub fn new() -> Self {
+        AccountProvider {
+            hasher: Argon2::default(),
+        }
     }
 }
+
 impl AccountIO for AccountProvider {
     type InternalId = Uuid;
     type ExternalId = String;
@@ -32,7 +33,7 @@ impl AccountIO for AccountProvider {
         password: &str,
         ctx: &mut Self::AccountCtx,
     ) -> Result<Self::InternalId, AccountError> {
-        let argon2 = self.hasher();
+        let argon2 = &self.hasher;
         let salt = SaltString::generate(&mut OsRng);
         let Ok(password_hash) = argon2.hash_password(password.as_ref(), &salt) else {
             return Err(AccountError::CouldNotCreate);
@@ -84,7 +85,7 @@ impl AccountIO for AccountProvider {
         };
 
         if self
-            .hasher()
+            .hasher
             .verify_password(password.as_ref(), &parsed_hash)
             .is_ok()
         {
