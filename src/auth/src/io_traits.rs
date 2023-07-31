@@ -1,4 +1,3 @@
-use crate::account::Account;
 #[cfg(test)]
 use mockall::{automock, predicate::*};
 
@@ -24,12 +23,12 @@ pub trait AccountIO {
         ctx: &mut Self::AccountCtx,
     ) -> Result<Self::InternalId, AccountError>;
 
-    /// retrieve an account identified by its external_id
-    async fn get(
+    /// retrieve account login_data identified by its external_id
+    async fn get_login(
         &self,
         id: &Self::ExternalId,
         ctx: &mut Self::AccountCtx,
-    ) -> Result<Account<Self::InternalId, Self::ExternalId>, AccountError>;
+    ) -> Result<(Self::InternalId, String), AccountError>;
 
     /// remove an account identified by its internal_id
     async fn remove(

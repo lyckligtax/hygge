@@ -1,5 +1,5 @@
 use crate::authentication_error::AuthError;
-use crate::{AccountError, AccountIO, AccountStatus, LoginTokenIO};
+use crate::{AccountError, AccountIO, LoginTokenIO};
 
 // TODO: documentation
 #[derive(Clone)]
@@ -30,7 +30,7 @@ where
         password: &str,
         ctx: &mut AccountCtx,
     ) -> Result<InternalId, AuthError> {
-        match self.accounts.get(id, ctx).await {
+        match self.accounts.get_login(id, ctx).await {
             Err(AccountError::NotFound) => {}
             Ok(_) | Err(_) => {
                 return Err(AuthError::CouldNotCreate);
@@ -66,25 +66,19 @@ where
     /// caches login tokens for a configured [Duration](Tokens::new)
     pub async fn login(
         &mut self,
-        id: &Accounts::ExternalId,
+        external_id: &Accounts::ExternalId,
         password: &str,
         account_ctx: &mut AccountCtx,
         login_ctx: &mut LoginCtx,
     ) -> Result<Tokens::LoginToken, AuthError> {
-        let user_account = self.accounts.get(id, account_ctx).await?;
-        match user_account.status {
-            AccountStatus::Active => {}
-            AccountStatus::Inactive | AccountStatus::Removed => {
-                return Err(AuthError::Credentials);
-            }
-        }
+        let (internal_id, hash) = self.accounts.get_login(external_id, account_ctx).await?;
         self.accounts
-            .verify_password(&user_account.hash, password, account_ctx)
+            .verify_password(&hash, password, account_ctx)
             .await?;
 
         Ok(self
             .tokens
-            .insert(&user_account.id_internal as &Tokens::InternalId, login_ctx)
+            .insert(&internal_id as &Tokens::InternalId, login_ctx)
             .await?)
     }
 
@@ -122,7 +116,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::Authentication;
-    use crate::{Account, AccountStatus, MockAccountIO};
+    use crate::MockAccountIO;
     use crate::{AccountError, MockLoginTokenIO};
 
     #[tokio::test]
@@ -132,7 +126,7 @@ mod tests {
 
         // given accounts can insert a new account
         accounts
-            .expect_get()
+            .expect_get_login()
             .returning(|_, _| Err(AccountError::NotFound));
         accounts.expect_create().returning(|_, _, _| Ok(9u32));
 
@@ -149,14 +143,9 @@ mod tests {
         let cache = MockLoginTokenIO::new();
 
         // given accounts can insert a new account
-        accounts.expect_get().returning(|_, _| {
-            Ok(Account {
-                id_internal: 9u32,
-                id_external: 1u32,
-                hash: "test1234".to_string(),
-                status: AccountStatus::Active,
-            })
-        });
+        accounts
+            .expect_get_login()
+            .returning(|_, _| Ok((9u32, "test1234".to_string())));
 
         let mut auth = Authentication::new(accounts, cache);
 
@@ -169,14 +158,10 @@ mod tests {
     async fn test_login() {
         let mut accounts = MockAccountIO::new();
         let mut cache = MockLoginTokenIO::new();
-        accounts.expect_get().returning(|_, _| {
-            Ok(Account {
-                id_internal: 9u32,
-                id_external: 1u32,
-                hash: "test1234".to_string(),
-                status: AccountStatus::Active,
-            })
-        });
+        accounts
+            .expect_get_login()
+            .returning(|_, _| Ok((9u32, "test1234".to_string())));
+
         accounts
             .expect_verify_password()
             .returning(|_, _, _| Ok(()));
@@ -195,7 +180,7 @@ mod tests {
         let mut accounts = MockAccountIO::new();
         let cache = MockLoginTokenIO::new();
         accounts
-            .expect_get()
+            .expect_get_login()
             .returning(|_, _| Err(AccountError::NotFound)); // the given user does not exist
 
         let mut auth = Authentication::new(accounts, cache);

@@ -1,6 +1,5 @@
-use auth::{Account, AccountError, AccountIO};
+use auth::{AccountError, AccountIO};
 
-use super::account::{ProviderAccount, ProviderAccountStatus};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -48,22 +47,20 @@ impl AccountIO for AccountProvider {
         }
     }
 
-    async fn get(
+    async fn get_login(
         &self,
-        id: &Self::ExternalId,
+        external_id: &Self::ExternalId,
         ctx: &mut Self::AccountCtx,
-    ) -> Result<Account<Self::InternalId, Self::ExternalId>, AccountError> {
-        let row :ProviderAccount<Self::InternalId, Self::ExternalId> = sqlx::query_as!(
-            ProviderAccount,
-            r#"SELECT id as id_internal, id_external, hash, status as "status: ProviderAccountStatus" from public.auth WHERE id_external = $1"#,
-            id
+    ) -> Result<(Self::InternalId, String), AccountError> {
+        let login = sqlx::query!(
+            r#"SELECT id, hash from public.auth WHERE id_external = $1 AND status = 'active'"#,
+            external_id
         )
         .fetch_one(ctx)
         .await
-        // no explicit match on the Error needed. It is always RowNotFound
         .map_err(|_| AccountError::NotFound)?;
 
-        Ok(Account::from(row))
+        Ok((login.id, login.hash))
     }
 
     async fn remove(
