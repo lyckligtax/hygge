@@ -7,11 +7,11 @@ use crate::types::RedisConnection;
 use auth::{AuthenticationError, LoginTokenIO};
 
 #[derive(Default, Clone)]
-pub struct LoginTokenProvider {
+pub struct Provider {
     ttl: u64,
 }
 
-impl LoginTokenIO for LoginTokenProvider {
+impl LoginTokenIO for Provider {
     type InternalId = Uuid;
     type LoginToken = Uuid;
     type LoginCtx = RedisConnection;
@@ -24,16 +24,13 @@ impl LoginTokenIO for LoginTokenProvider {
         let login_token = Uuid::new_v4();
         if redis::pipe()
             .cmd("SET")
-            .arg(LoginTokenProvider::create_key(&login_token))
+            .arg(Provider::create_key(&login_token))
             .arg(internal_id.to_string())
             .arg("EX")
             .arg(self.ttl)
             .ignore()
             .cmd("SET")
-            .arg(LoginTokenProvider::create_reverse_key(
-                internal_id,
-                &login_token,
-            ))
+            .arg(Provider::create_reverse_key(internal_id, &login_token))
             .arg(login_token.to_string())
             .arg("EX")
             .arg(self.ttl)
@@ -54,7 +51,7 @@ impl LoginTokenIO for LoginTokenProvider {
         ctx: &mut Self::LoginCtx,
     ) -> Result<(), AuthenticationError> {
         if ctx
-            .del::<_, ()>(LoginTokenProvider::create_key(login_token))
+            .del::<_, ()>(Provider::create_key(login_token))
             .await
             .is_ok()
         {
@@ -71,7 +68,7 @@ impl LoginTokenIO for LoginTokenProvider {
     ) -> Result<(), AuthenticationError> {
         let Ok(mut iter) = redis::cmd("SCAN")
             .arg("MATCH")
-            .arg(LoginTokenProvider::create_reverse_key_match(internal_id))
+            .arg(Provider::create_reverse_key_match(internal_id))
             .cursor_arg(0)
             .clone()
             .iter_async::<String>(ctx)
@@ -85,7 +82,7 @@ impl LoginTokenIO for LoginTokenProvider {
             let p = key.split(':').last().expect("expected to get uuid str");
             let login_token = Uuid::from_str(p).expect("expected to get uuid");
             keys_to_remove = keys_to_remove.arg(key);
-            keys_to_remove = keys_to_remove.arg(LoginTokenProvider::create_key(&login_token));
+            keys_to_remove = keys_to_remove.arg(Provider::create_key(&login_token));
         }
 
         drop(iter);
@@ -103,7 +100,7 @@ impl LoginTokenIO for LoginTokenProvider {
         ctx: &mut Self::LoginCtx,
     ) -> Option<Self::InternalId> {
         if let Ok(res) = ctx
-            .get::<_, String>(LoginTokenProvider::create_key(login_token))
+            .get::<_, String>(Provider::create_key(login_token))
             .await
         {
             if let Ok(internal_id) = Uuid::from_str(&res) {
@@ -114,22 +111,20 @@ impl LoginTokenIO for LoginTokenProvider {
     }
 }
 
-impl LoginTokenProvider {
+impl Provider {
     pub fn new(ttl: Duration) -> Self {
         Self { ttl: ttl.as_secs() }
     }
-    fn create_key(login_token: &<LoginTokenProvider as LoginTokenIO>::LoginToken) -> String {
+    fn create_key(login_token: &<Provider as LoginTokenIO>::LoginToken) -> String {
         format!("auth:login:{login_token}")
     }
     fn create_reverse_key(
-        internal_id: &<LoginTokenProvider as LoginTokenIO>::InternalId,
-        login_token: &<LoginTokenProvider as LoginTokenIO>::LoginToken,
+        internal_id: &<Provider as LoginTokenIO>::InternalId,
+        login_token: &<Provider as LoginTokenIO>::LoginToken,
     ) -> String {
         format!("auth:login:reverse:{internal_id}:{login_token}")
     }
-    fn create_reverse_key_match(
-        internal_id: &<LoginTokenProvider as LoginTokenIO>::InternalId,
-    ) -> String {
+    fn create_reverse_key_match(internal_id: &<Provider as LoginTokenIO>::InternalId) -> String {
         format!("*auth:login:reverse:{internal_id}:*")
     }
 }

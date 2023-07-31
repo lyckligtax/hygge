@@ -1,7 +1,6 @@
 #![allow(incomplete_features)]
 #![feature(async_fn_in_trait)]
 
-use ::auth::Authentication;
 use axum::middleware::{from_extractor_with_state, from_fn_with_state};
 use axum::routing::get;
 use axum::Router;
@@ -14,8 +13,8 @@ mod services;
 mod types;
 mod web;
 
+use crate::services::auth::create_auth_service;
 use helper::{create_postgres_pool, create_redis_pool};
-use services::auth::{AccountProvider, LoginTokenProvider};
 use types::{Services, UserId};
 
 #[tokio::main]
@@ -30,10 +29,8 @@ async fn main() {
     let redis_pool = create_redis_pool(&redis_url).unwrap();
 
     // build services
-    let accounts = AccountProvider::new();
-    let login_tokens = LoginTokenProvider::new(Duration::from_secs(60 * 60));
     let global_state = Services {
-        auth: Authentication::new(accounts, login_tokens),
+        auth: create_auth_service(Duration::from_secs(60 * 60)),
         redis: redis_pool.clone(),
     };
 

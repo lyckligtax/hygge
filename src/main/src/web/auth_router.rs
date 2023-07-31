@@ -1,4 +1,5 @@
-use crate::types::{Auth, Services};
+use crate::services::auth::Auth;
+use crate::types::Services;
 use axum::http::StatusCode;
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
@@ -41,7 +42,13 @@ async fn create(
     Json(login_data): Json<LoginPayload>,
 ) -> Response {
     if let Ok(id) = auth
-        .create_account(&login_data.external_id, &login_data.password, &mut tx)
+        .create_account(
+            &login_data.external_id,
+            &login_data.password,
+            None,
+            &mut tx,
+            &mut (),
+        )
         .await
     {
         (StatusCode::CREATED, id.to_string()).into_response()

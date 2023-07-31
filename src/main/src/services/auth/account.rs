@@ -8,19 +8,19 @@ use sqlx::PgConnection;
 use uuid::Uuid;
 
 #[derive(Clone)]
-pub struct AccountProvider {
+pub struct Provider {
     hasher: Argon2<'static>,
 }
 
-impl AccountProvider {
+impl Provider {
     pub fn new() -> Self {
-        AccountProvider {
+        Provider {
             hasher: Argon2::default(),
         }
     }
 }
 
-impl AccountIO for AccountProvider {
+impl AccountIO for Provider {
     type InternalId = Uuid;
     type ExternalId = String;
 
@@ -38,9 +38,14 @@ impl AccountIO for AccountProvider {
             return Err(AccountError::CouldNotCreate);
         };
 
-        if let Ok(rec) = sqlx::query!("INSERT INTO public.auth (id, id_external, hash, created_at, updated_at) VALUES (DEFAULT, $1, $2, DEFAULT, DEFAULT) RETURNING id",
-            id, password_hash.to_string()
-        ).fetch_one(ctx).await {
+        if let Ok(rec) = sqlx::query!(
+            "INSERT INTO public.auth (id_external, hash) VALUES ($1, $2) RETURNING id",
+            id,
+            password_hash.to_string()
+        )
+        .fetch_one(ctx)
+        .await
+        {
             Ok(rec.id)
         } else {
             Err(AccountError::CouldNotCreate)
@@ -53,7 +58,7 @@ impl AccountIO for AccountProvider {
         ctx: &mut Self::AccountCtx,
     ) -> Result<(Self::InternalId, String), AccountError> {
         let login = sqlx::query!(
-            r#"SELECT id, hash from public.auth WHERE id_external = $1 AND status = 'active'"#,
+            r#"SELECT id, hash from public.auth WHERE id_external = $1 AND active = true"#,
             external_id
         )
         .fetch_one(ctx)
@@ -65,10 +70,19 @@ impl AccountIO for AccountProvider {
 
     async fn remove(
         &mut self,
-        _id: &Self::InternalId,
-        _ctx: &Self::AccountCtx,
+        internal_id: &Self::InternalId,
+        ctx: &mut Self::AccountCtx,
     ) -> Result<(), AccountError> {
-        unimplemented!()
+        match sqlx::query!(
+            r#"UPDATE public.auth SET active = false WHERE id = $1"#,
+            internal_id
+        )
+        .execute(ctx)
+        .await
+        {
+            Ok(res) if res.rows_affected() == 1 => Ok(()),
+            _ => Err(AccountError::NotFound),
+        }
     }
 
     async fn verify_password(

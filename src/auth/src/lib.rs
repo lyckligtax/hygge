@@ -4,9 +4,9 @@
 mod account;
 mod authentication;
 mod authentication_error;
-mod io_traits;
+mod io;
 
 pub use account::*;
 pub use authentication::*;
 pub use authentication_error::*;
-pub use io_traits::*;
+pub use io::*;

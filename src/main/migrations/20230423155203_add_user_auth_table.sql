@@ -1,10 +1,11 @@
 -- Add migration script here
+
 create table auth
 (
     id          uuid      default gen_random_uuid(),
     id_external varchar   not null,
     hash        varchar   not null,
-    status      varchar   default 'active' not null,
+    active      boolean   default true not null,
     created_at  timestamp not null default NOW(),
     updated_at  timestamp not null default NOW()
 );

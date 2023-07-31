@@ -1,9 +1,7 @@
-use crate::services::auth::{AccountProvider, LoginTokenProvider};
-use auth::Authentication;
+use crate::services::auth::Auth;
 use axum::extract::FromRef;
 use uuid::Uuid;
 
-pub type Auth = Authentication<AccountProvider, LoginTokenProvider>;
 pub type RedisPool = deadpool_redis::Pool;
 pub type RedisConnection = deadpool_redis::Connection;
 
