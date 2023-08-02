@@ -79,16 +79,22 @@ where
     /// also removes all login_tokens for this internal_id
     pub async fn delete_account(
         &mut self,
-        id: &Accounts::InternalId,
+        user_id: &Accounts::InternalId,
+        internal_id: &Accounts::InternalId,
         account_ctx: &mut AccountCtx,
         login_ctx: &mut LoginCtx,
+        permission_ctx: &mut PermissionCtx,
     ) -> Result<(), AuthError> {
-        // TODO: do I have permissions to delete an account?
-        // in theory I should always be able to delete my own account
-        // but this api should be usable by a support member as well because we want to always use the same api a user might
-        // integrate permission here? new permission IO trait?
-        self.tokens.remove_all(id, login_ctx).await?;
-        Ok(self.accounts.remove(id, account_ctx).await?)
+        if !self
+            .permissions
+            .remove_account(user_id, internal_id, permission_ctx)
+            .await
+        {
+            return Err(AuthError::Credentials);
+        }
+
+        self.tokens.remove_all(user_id, login_ctx).await?;
+        Ok(self.accounts.remove(user_id, account_ctx).await?)
     }
 
     /// logs in an external id authenticated by its password
