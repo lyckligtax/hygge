@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO public.auth (id_external, hash) VALUES ($1, $2) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "046cf42bc0782345c316a3134fff5ab864ce14d364c4da8d67646c2368bea2b2"
+}

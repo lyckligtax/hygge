@@ -75,7 +75,9 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
     ///
     /// see [CanDo::compact()]
     pub fn remove_grantee(&mut self, grantee_id: &GranteeId) -> Result<(), CanDoError> {
-        let Some(grantee_to_delete_index) = self.grantees.remove(grantee_id) else { return Err(CanDoError::GranteeNotFound); };
+        let Some(grantee_to_delete_index) = self.grantees.remove(grantee_id) else {
+            return Err(CanDoError::GranteeNotFound);
+        };
         let retain_predicate = |el: &usize| el != &grantee_to_delete_index;
 
         // remove grantee from arena and return it
@@ -115,7 +117,9 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
     ///
     /// see [CanDo::compact()]
     pub fn remove_action(&mut self, action_id: &ActionId) -> Result<(), CanDoError> {
-        let Some(action_to_remove_index) = self.actions.remove(action_id) else { return Err(CanDoError::ActionNotFound); };
+        let Some(action_to_remove_index) = self.actions.remove(action_id) else {
+            return Err(CanDoError::ActionNotFound);
+        };
         let removed_action = self.actions_arena.remove(action_to_remove_index);
         // cut grantee connections
         for grantee_index in removed_action.grantees {
@@ -184,8 +188,12 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
         main_action_id: &ActionId,
         sub_action_id: &ActionId,
     ) -> Result<(), CanDoError> {
-        let Some(&main_action_idx) = self.actions.get(main_action_id) else { return Err(CanDoError::ActionNotFound); };
-        let Some(&sub_action_idx) = self.actions.get(sub_action_id) else { return Err(CanDoError::ActionNotFound); };
+        let Some(&main_action_idx) = self.actions.get(main_action_id) else {
+            return Err(CanDoError::ActionNotFound);
+        };
+        let Some(&sub_action_idx) = self.actions.get(sub_action_id) else {
+            return Err(CanDoError::ActionNotFound);
+        };
 
         if main_action_idx == sub_action_idx {
             return Ok(());
@@ -258,8 +266,12 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
         grantee_id: &GranteeId,
         grantee_of_id: &GranteeId,
     ) -> Result<(), CanDoError> {
-        let Some(&grantee_index) = self.grantees.get(grantee_id) else { return Err(CanDoError::GranteeNotFound); };
-        let Some(&grantee_of_index) = self.grantees.get(grantee_of_id) else { return Err(CanDoError::GranteeNotFound); };
+        let Some(&grantee_index) = self.grantees.get(grantee_id) else {
+            return Err(CanDoError::GranteeNotFound);
+        };
+        let Some(&grantee_of_index) = self.grantees.get(grantee_of_id) else {
+            return Err(CanDoError::GranteeNotFound);
+        };
 
         if grantee_index == grantee_of_index {
             return Ok(());
@@ -335,8 +347,12 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
         grantee_id: &GranteeId,
         action_id: &ActionId,
     ) -> Result<bool, CanDoError> {
-        let Some(&grantee_idx) = self.grantees.get(grantee_id) else { return Err(CanDoError::GranteeNotFound); };
-        let Some(&sub_action_idx) = self.actions.get(action_id) else { return Err(CanDoError::ActionNotFound); };
+        let Some(&grantee_idx) = self.grantees.get(grantee_id) else {
+            return Err(CanDoError::GranteeNotFound);
+        };
+        let Some(&sub_action_idx) = self.actions.get(action_id) else {
+            return Err(CanDoError::ActionNotFound);
+        };
         // grantee_idx and action_idx are positions in the arena
         // thus comparing them is easy
 

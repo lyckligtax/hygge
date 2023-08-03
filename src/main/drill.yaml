@@ -1,0 +1,14 @@
+---
+concurrency: 100
+base: 'http://localhost:3000'
+iterations: 100
+rampup: 3
+
+plan:
+  - name: login
+    request:
+      url: /auth/login
+      method: POST
+      body: '{"external_id":"tobias", "password": "test"}'
+      headers:
+        Content-Type: 'application/json'

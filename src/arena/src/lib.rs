@@ -26,7 +26,7 @@
 //! - reuse removed indices
 //! - offer a way to compact its data [`Arena::compact()`]
 
-use std::{mem, vec};
+use std::vec;
 
 #[derive(Clone)]
 pub struct Arena<T> {
@@ -97,8 +97,9 @@ impl<T> Arena<T> {
     #[inline]
     pub fn remove(&mut self, index: usize) -> T {
         // return T from the backing storage and fill the index with None
-        let value =
-            mem::replace(&mut self.fields[index], None).expect("Cannot remove non existing value");
+        let value = self.fields[index]
+            .take()
+            .expect("Cannot remove non existing value");
 
         self.empty_fields.push(index);
         value

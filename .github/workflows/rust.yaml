@@ -17,6 +17,11 @@ jobs:
         working-directory: ./src
     steps:
       - uses: actions/checkout@v3
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
       - name: Format
@@ -24,4 +29,4 @@ jobs:
       - name: Check
         run: cargo check
       - name: Build
-        run: cargo build --verbose
+        run: cargo build
