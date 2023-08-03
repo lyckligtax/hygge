@@ -7,7 +7,7 @@ use argon2::{
 use sqlx::PgConnection;
 use uuid::Uuid;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Provider {
     hasher: Argon2<'static>,
 }
