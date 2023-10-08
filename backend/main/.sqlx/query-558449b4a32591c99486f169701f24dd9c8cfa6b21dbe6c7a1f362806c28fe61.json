@@ -1,0 +1,51 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, id_external, hash, status as \"status: _\" from public.account WHERE id_external = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "id_external",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "status: _",
+        "type_info": {
+          "Custom": {
+            "name": "account_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "inactive",
+                "removed"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "558449b4a32591c99486f169701f24dd9c8cfa6b21dbe6c7a1f362806c28fe61"
+}

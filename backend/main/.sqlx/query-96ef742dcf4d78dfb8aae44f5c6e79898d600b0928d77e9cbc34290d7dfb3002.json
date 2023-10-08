@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE public.account SET status = 'removed' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "96ef742dcf4d78dfb8aae44f5c6e79898d600b0928d77e9cbc34290d7dfb3002"
+}

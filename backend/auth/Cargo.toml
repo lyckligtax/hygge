@@ -1,0 +1,11 @@
+[package]
+name = "auth"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = { workspace = true }
+mockall = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true } # used for test runtime
