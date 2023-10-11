@@ -3,6 +3,7 @@
 #![feature(let_chains)]
 
 use axum::middleware::from_fn_with_state;
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
 use dotenvy::dotenv;
@@ -40,7 +41,9 @@ async fn main() {
 
     // build axum router
     let app = Router::new()
-        .route("/", get(|| async { "Hello" }))
+        // --- Begin authenticated routes
+        .route("/", get(hello_world))
+        // --- END authenticated routes
         .layer(from_fn_with_state(
             AuthService {
                 auth: auth.clone(),
@@ -65,4 +68,8 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+async fn hello_world(id: UserId) -> Response {
+    format!("Hello {}", id.0.to_string()).into_response()
 }

@@ -31,11 +31,13 @@ pub async fn auth_layer<B>(
         return StatusCode::UNAUTHORIZED.into_response();
     };
 
+    // insert InternalId to be extractable later on
     if request
         .extensions_mut()
         .insert(UserId(internal_id))
-        .is_none()
+        .is_some()
     {
+        // inserted twice
         return StatusCode::UNAUTHORIZED.into_response();
     };
 

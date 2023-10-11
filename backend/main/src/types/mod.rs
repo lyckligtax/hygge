@@ -11,5 +11,5 @@ pub struct Services {
     pub redis: RedisPool,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct UserId(pub Uuid);

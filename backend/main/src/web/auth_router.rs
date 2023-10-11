@@ -1,6 +1,6 @@
 use crate::services::auth::Auth;
 use crate::types::Services;
-use axum::http::StatusCode;
+use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::Response;
 use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
 use axum_tx_layer::Transaction;
@@ -21,15 +21,12 @@ async fn login(
     Json(login_data): Json<LoginPayload>,
 ) -> Response {
     if let Ok(id) = auth
-        .login(
-            &login_data.external_id,
-            &login_data.password,
-            &mut tx,
-            &mut redis,
-        )
+        .login(&login_data.id, &login_data.password, &mut tx, &mut redis)
         .await
     {
-        (StatusCode::OK, id).into_response()
+        let mut headers = HeaderMap::new();
+        headers.insert(header::AUTHORIZATION, id.parse().unwrap());
+        (StatusCode::OK, headers).into_response()
     } else {
         (StatusCode::FORBIDDEN).into_response()
     }
@@ -42,7 +39,7 @@ async fn create(
     Json(login_data): Json<LoginPayload>,
 ) -> Response {
     if let Ok(id) = auth
-        .create_account(&login_data.external_id, &login_data.password, &mut tx)
+        .create_account(&login_data.id, &login_data.password, &mut tx)
         .await
     {
         (StatusCode::CREATED, id.to_string()).into_response()
@@ -53,6 +50,6 @@ async fn create(
 
 #[derive(Debug, Deserialize)]
 struct LoginPayload {
-    external_id: String,
+    id: String,
     password: String,
 }

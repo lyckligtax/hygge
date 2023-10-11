@@ -43,7 +43,7 @@ pub trait AccountIO {
         &self,
         id: &Self::ExternalId,
         ctx: &mut Self::Ctx,
-    ) -> Result<bool, AccountError>;
+    ) -> Result<Self::InternalId, AccountError>;
 
     /// retrieve account identified by its external_id
     async fn update(

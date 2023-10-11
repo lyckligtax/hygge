@@ -31,7 +31,7 @@ where
         account_ctx: &mut AccountCtx,
     ) -> Result<InternalId, AuthError> {
         match self.accounts.exists(external_id, account_ctx).await {
-            Ok(x) if x => Err(AuthError::Credentials),
+            Ok(_) => Err(AuthError::Credentials),
             _ => Ok(self
                 .accounts
                 .create(external_id, password, account_ctx)
@@ -149,7 +149,7 @@ mod tests {
         let mut accounts = MockAccountIO::new();
         let tokens = MockTokenIO::new();
 
-        accounts.expect_exists().returning(|_, _| Ok(true));
+        accounts.expect_exists().returning(|_, _| Ok(1));
 
         let mut auth = Authentication::new(accounts, tokens);
 

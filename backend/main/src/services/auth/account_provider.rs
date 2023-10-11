@@ -67,17 +67,35 @@ impl AccountIO for Provider {
 
     async fn get_by_internal(
         &self,
-        _id: &Self::InternalId,
-        _ctx: &mut Self::Ctx,
+        id: &Self::InternalId,
+        ctx: &mut Self::Ctx,
     ) -> Result<Self::Account, AccountError> {
-        todo!()
+        //TODO: look at why query_as macro cannot use status directly
+        sqlx::query_as!(
+            Self::Account,
+            r#"SELECT id, id_external, hash, status as "status: _" from public.account WHERE id = $1"#,
+            id
+        )
+        .fetch_one(ctx)
+        .await
+        .map_err(|_| AccountError::NotFound)
     }
     async fn exists(
         &self,
-        _id: &Self::ExternalId,
-        _ctx: &mut Self::Ctx,
-    ) -> Result<bool, AccountError> {
-        todo!()
+        external_id: &Self::ExternalId,
+        ctx: &mut Self::Ctx,
+    ) -> Result<Self::InternalId, AccountError> {
+        if let Ok(rec) = sqlx::query!(
+            r#"SELECT id from public.account where id_external = $1"#,
+            external_id
+        )
+        .fetch_one(ctx)
+        .await
+        {
+            Ok(rec.id)
+        } else {
+            Err(AccountError::NotFound)
+        }
     }
 
     async fn update(
