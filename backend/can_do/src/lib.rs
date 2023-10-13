@@ -78,34 +78,58 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
         let Some(grantee_to_delete_index) = self.grantees.remove(grantee_id) else {
             return Err(CanDoError::GranteeNotFound);
         };
-        let retain_predicate = |el: &usize| el != &grantee_to_delete_index;
+        let retain_predicate = |el: &usize| el == &grantee_to_delete_index;
 
         // remove grantee from arena and return it
         let removed_grantee = self.grantees_arena.remove(grantee_to_delete_index);
 
         // cut grantee connections;
         for &grantee_of in &removed_grantee.grantee_of {
-            let _ = &self
+            if let Some(i) = self
                 .grantees_arena
-                .get_mut(grantee_of)
+                .get(grantee_of)
                 .grantees
-                .retain(retain_predicate);
+                .iter()
+                .position(retain_predicate)
+            {
+                let _ = &self
+                    .grantees_arena
+                    .get_mut(grantee_of)
+                    .grantees
+                    .swap_remove(i);
+            }
         }
 
         for &grantee_index in &removed_grantee.grantees {
-            let _ = &self
+            if let Some(i) = self
                 .grantees_arena
-                .get_mut(grantee_index)
+                .get(grantee_index)
                 .grantee_of
-                .retain(retain_predicate);
+                .iter()
+                .position(retain_predicate)
+            {
+                let _ = &self
+                    .grantees_arena
+                    .get_mut(grantee_index)
+                    .grantee_of
+                    .swap_remove(i);
+            }
         }
         // remove bidirectional action connections
         for &action_index in &removed_grantee.actions {
-            let _ = &self
+            if let Some(i) = self
                 .actions_arena
-                .get_mut(action_index)
+                .get(action_index)
                 .grantees
-                .retain(retain_predicate);
+                .iter()
+                .position(retain_predicate)
+            {
+                let _ = &self
+                    .actions_arena
+                    .get_mut(action_index)
+                    .grantees
+                    .swap_remove(i);
+            }
         }
         Ok(())
     }
@@ -123,17 +147,35 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
         let removed_action = self.actions_arena.remove(action_to_remove_index);
         // cut grantee connections
         for grantee_index in removed_action.grantees {
-            self.grantees_arena
-                .get_mut(grantee_index)
+            if let Some(i) = self
+                .grantees_arena
+                .get(grantee_index)
                 .actions
-                .retain(|el: &usize| el != &action_to_remove_index);
+                .iter()
+                .position(|el: &usize| el == &action_to_remove_index)
+            {
+                let _ = &self
+                    .grantees_arena
+                    .get_mut(grantee_index)
+                    .actions
+                    .swap_remove(i);
+            }
         }
         // cut action connections
         for action_index in removed_action.sub_action_of {
-            self.actions_arena
-                .get_mut(action_index)
+            if let Some(i) = self
+                .actions_arena
+                .get(action_index)
                 .main_action_of
-                .retain(|el: &usize| el != &action_to_remove_index);
+                .iter()
+                .position(|el: &usize| el == &action_to_remove_index)
+            {
+                let _ = &self
+                    .actions_arena
+                    .get_mut(action_index)
+                    .main_action_of
+                    .swap_remove(i);
+            }
         }
 
         Ok(())
@@ -167,14 +209,33 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
             return Err(CanDoError::ActionNotFound);
         };
 
-        self.grantees_arena
-            .get_mut(grantee_index)
+        if let Some(i) = self
+            .grantees_arena
+            .get(grantee_index)
             .actions
-            .retain(|el: &usize| el != &action_index);
-        self.actions_arena
-            .get_mut(action_index)
+            .iter()
+            .position(|el: &usize| el == &action_index)
+        {
+            let _ = &self
+                .grantees_arena
+                .get_mut(grantee_index)
+                .actions
+                .swap_remove(i);
+        }
+
+        if let Some(i) = self
+            .actions_arena
+            .get(action_index)
             .grantees
-            .retain(|el: &usize| el != &grantee_index);
+            .iter()
+            .position(|el: &usize| el == &grantee_index)
+        {
+            let _ = &self
+                .actions_arena
+                .get_mut(action_index)
+                .grantees
+                .swap_remove(i);
+        }
 
         Ok(())
     }
@@ -199,14 +260,33 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
             return Ok(());
         }
 
-        self.actions_arena
-            .get_mut(sub_action_idx)
+        if let Some(i) = self
+            .actions_arena
+            .get(sub_action_idx)
             .sub_action_of
-            .retain(|el: &usize| el != &main_action_idx);
-        self.actions_arena
-            .get_mut(main_action_idx)
+            .iter()
+            .position(|el: &usize| el == &main_action_idx)
+        {
+            let _ = &self
+                .actions_arena
+                .get_mut(sub_action_idx)
+                .sub_action_of
+                .swap_remove(i);
+        }
+
+        if let Some(i) = self
+            .actions_arena
+            .get(main_action_idx)
             .main_action_of
-            .retain(|el: &usize| el != &sub_action_idx);
+            .iter()
+            .position(|el: &usize| el == &sub_action_idx)
+        {
+            let _ = &self
+                .actions_arena
+                .get_mut(main_action_idx)
+                .main_action_of
+                .swap_remove(i);
+        }
 
         Ok(())
     }
@@ -276,14 +356,34 @@ impl<GranteeId: Hash + Eq + Copy, ActionId: Hash + Eq + Copy> CanDo<GranteeId, A
         if grantee_index == grantee_of_index {
             return Ok(());
         }
-        self.grantees_arena
+
+        if let Some(i) = self
+            .grantees_arena
             .get_mut(grantee_index)
             .grantee_of
-            .retain(|el: &usize| el != &grantee_of_index);
-        self.grantees_arena
-            .get_mut(grantee_of_index)
+            .iter()
+            .position(|el: &usize| el == &grantee_of_index)
+        {
+            let _ = &self
+                .grantees_arena
+                .get_mut(grantee_index)
+                .grantee_of
+                .swap_remove(i);
+        }
+
+        if let Some(i) = self
+            .grantees_arena
+            .get(grantee_of_index)
             .grantees
-            .retain(|el: &usize| el != &grantee_of_index);
+            .iter()
+            .position(|el: &usize| el == &grantee_of_index)
+        {
+            let _ = &self
+                .grantees_arena
+                .get_mut(grantee_index)
+                .grantee_of
+                .swap_remove(i);
+        }
         Ok(())
     }
 
