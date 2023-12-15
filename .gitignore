@@ -1,3 +1,4 @@
 backend/target
 .idea
 dev/docker_mounts
+.obsidian
