@@ -1,15 +1,18 @@
 mod account;
-mod account_provider;
-mod token_provider;
+mod client;
+mod error;
+pub(crate) mod io;
+pub mod io_provider;
 
-use auth::Authentication;
-use std::time::Duration;
+use crate::services::auth::client::AuthenticationClient;
+use crate::services::auth::io_provider::{LocalAccountIO, LocalTokenIO};
+use sqlx::{Postgres, Transaction};
 
-pub type Auth = Authentication<account_provider::Provider, token_provider::Provider>;
-
-pub fn create_auth_service(login_ttl: Duration, key: &str) -> Auth {
-    Authentication::new(
-        account_provider::Provider::new(),
-        token_provider::Provider::new(login_ttl, key),
-    )
-}
+pub type Auth = AuthenticationClient<
+    Transaction<'static, Postgres>,
+    RedisConnection,
+    LocalAccountIO,
+    LocalTokenIO,
+>;
+use crate::types::RedisConnection;
+pub use io_provider::*;

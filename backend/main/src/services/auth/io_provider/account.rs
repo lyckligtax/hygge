@@ -1,38 +1,35 @@
-use auth::{AccountError, AccountIO};
-
 use crate::services::auth::account::Account;
+use crate::services::auth::io::{AccountError, AccountIO};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
+
 use sqlx::PgConnection;
 use uuid::Uuid;
 
 #[derive(Clone, Default)]
-pub struct Provider {
+pub struct LocalAccountIO {
     hasher: Argon2<'static>,
 }
 
-impl Provider {
+impl LocalAccountIO {
     pub fn new() -> Self {
-        Provider {
+        LocalAccountIO {
             hasher: Argon2::default(),
         }
     }
 }
 
-impl AccountIO for Provider {
-    type InternalId = Uuid;
-    type ExternalId = String;
-    type Account = Account<Self::InternalId, Self::ExternalId>;
+impl AccountIO for LocalAccountIO {
     type Ctx = PgConnection;
 
     async fn create(
         &mut self,
-        id: &Self::ExternalId,
+        id: &str,
         password: &str,
         ctx: &mut Self::Ctx,
-    ) -> Result<Self::InternalId, AccountError> {
+    ) -> Result<Uuid, AccountError> {
         let hash = self.create_password_hash(password, ctx).await?;
 
         if let Ok(rec) = sqlx::query!(
@@ -51,12 +48,12 @@ impl AccountIO for Provider {
 
     async fn get_by_external(
         &self,
-        external_id: &Self::ExternalId,
+        external_id: &str,
         ctx: &mut Self::Ctx,
-    ) -> Result<Self::Account, AccountError> {
+    ) -> Result<Account, AccountError> {
         //TODO: look at why query_as macro cannot use status directly
         sqlx::query_as!(
-            Self::Account,
+            Account,
             r#"SELECT id, id_external, hash, status as "status: _" from public.account WHERE id_external = $1"#,
             external_id
         )
@@ -67,12 +64,12 @@ impl AccountIO for Provider {
 
     async fn get_by_internal(
         &self,
-        id: &Self::InternalId,
+        id: &Uuid,
         ctx: &mut Self::Ctx,
-    ) -> Result<Self::Account, AccountError> {
+    ) -> Result<Account, AccountError> {
         //TODO: look at why query_as macro cannot use status directly
         sqlx::query_as!(
-            Self::Account,
+            Account,
             r#"SELECT id, id_external, hash, status as "status: _" from public.account WHERE id = $1"#,
             id
         )
@@ -80,11 +77,7 @@ impl AccountIO for Provider {
         .await
         .map_err(|_| AccountError::NotFound)
     }
-    async fn exists(
-        &self,
-        external_id: &Self::ExternalId,
-        ctx: &mut Self::Ctx,
-    ) -> Result<Self::InternalId, AccountError> {
+    async fn exists(&self, external_id: &str, ctx: &mut Self::Ctx) -> Result<Uuid, AccountError> {
         if let Ok(rec) = sqlx::query!(
             r#"SELECT id from public.account where id_external = $1"#,
             external_id
@@ -99,18 +92,14 @@ impl AccountIO for Provider {
     }
 
     async fn update(
-        &self,
-        _account: Self::Account,
+        &mut self,
+        _account: Account,
         _ctx: &mut Self::Ctx,
-    ) -> Result<Self::Account, AccountError> {
+    ) -> Result<Account, AccountError> {
         todo!()
     }
 
-    async fn remove(
-        &mut self,
-        internal_id: &Self::InternalId,
-        ctx: &mut Self::Ctx,
-    ) -> Option<AccountError> {
+    async fn remove(&mut self, internal_id: &Uuid, ctx: &mut Self::Ctx) -> Option<AccountError> {
         match sqlx::query!(
             r#"UPDATE public.account SET status = 'removed' WHERE id = $1"#,
             internal_id
@@ -138,10 +127,10 @@ impl AccountIO for Provider {
 
     async fn verify_credentials(
         &self,
-        acc: &Self::Account,
+        acc: &Account,
         password: &str,
         _ctx: &mut Self::Ctx,
-    ) -> Result<Self::InternalId, AccountError> {
+    ) -> Result<Uuid, AccountError> {
         let Ok(parsed_hash) = PasswordHash::new(&acc.hash) else {
             return Err(AccountError::IO);
         };

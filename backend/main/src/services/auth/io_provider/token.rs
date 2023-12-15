@@ -1,3 +1,4 @@
+use crate::services::auth::io::{TokenError, TokenIO};
 use deadpool_redis::redis::AsyncCommands;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -6,16 +7,16 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 use crate::types::RedisConnection;
-use auth::{TokenError, TokenIO};
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
     id: Uuid,
     user_id: Uuid,
+    //TODO: extend according to docs
     exp: u64,
 }
 
 #[derive(Clone)]
-pub struct Provider {
+pub struct LocalTokenIO {
     ttl: Duration,
     enc_key: EncodingKey,
     dec_key: DecodingKey,
@@ -23,16 +24,14 @@ pub struct Provider {
     validation: Validation,
 }
 
-impl TokenIO for Provider {
-    type InternalId = Uuid;
-    type LoginToken = String;
+impl TokenIO for LocalTokenIO {
     type Ctx = RedisConnection;
 
     async fn create(
         &mut self,
-        internal_id: &Self::InternalId,
+        internal_id: &Uuid,
         _ctx: &mut Self::Ctx, //TODO: remove from trait because we only ever use it without?
-    ) -> Result<Self::LoginToken, TokenError> {
+    ) -> Result<String, TokenError> {
         let Ok(expiry) = SystemTime::now().add(self.ttl).duration_since(UNIX_EPOCH) else {
             return Err(TokenError::Invalid);
         };
@@ -44,11 +43,7 @@ impl TokenIO for Provider {
         encode(&self.header, &claim, &self.enc_key).or(Err(TokenError::Invalid))
     }
 
-    async fn revoke(
-        &mut self,
-        token: &Self::LoginToken,
-        ctx: &mut Self::Ctx,
-    ) -> Option<TokenError> {
+    async fn revoke(&mut self, token: &str, ctx: &mut Self::Ctx) -> Option<TokenError> {
         //TODO move decode and encode into own functions
         let Ok(token) = decode::<Claims>(token, &self.dec_key, &self.validation) else {
             // Token is invalid
@@ -75,11 +70,7 @@ impl TokenIO for Provider {
         }
     }
 
-    async fn revoke_all(
-        &mut self,
-        id: &Self::InternalId,
-        ctx: &mut Self::Ctx,
-    ) -> Option<TokenError> {
+    async fn revoke_all(&mut self, id: &Uuid, ctx: &mut Self::Ctx) -> Option<TokenError> {
         let Ok(expiry) = SystemTime::now().duration_since(UNIX_EPOCH) else {
             return Some(TokenError::IO);
         };
@@ -101,11 +92,7 @@ impl TokenIO for Provider {
         }
     }
 
-    async fn verify(
-        &mut self,
-        token: &Self::LoginToken,
-        ctx: &mut Self::Ctx,
-    ) -> Result<Self::InternalId, TokenError> {
+    async fn verify(&self, token: &str, ctx: &mut Self::Ctx) -> Result<Uuid, TokenError> {
         let Ok(token) = decode::<Claims>(token, &self.dec_key, &self.validation) else {
             // Token is invalid
             // - corrupt
@@ -138,7 +125,7 @@ impl TokenIO for Provider {
     }
 }
 
-impl Provider {
+impl LocalTokenIO {
     pub fn new(ttl: Duration, key: &str) -> Self {
         Self {
             ttl,

@@ -9,13 +9,16 @@ use axum::Router;
 use dotenvy::dotenv;
 use std::env;
 use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::RwLock;
+
 mod helper;
 mod services;
 mod types;
 mod web;
 
-use crate::services::auth::create_auth_service;
+use crate::services::auth::io_provider::{LocalAccountIO, LocalTokenIO};
 use crate::web::auth_layer::AuthService;
 use helper::{create_postgres_pool, create_redis_pool};
 use types::{Services, UserId};
@@ -32,12 +35,14 @@ async fn main() {
     let pg_pool = create_postgres_pool(&postgres_url).await.unwrap();
     let redis_pool = create_redis_pool(&redis_url).unwrap();
 
-    let auth = create_auth_service(Duration::from_secs(60 * 60), "test1234");
+    let account_provider = LocalAccountIO::new();
+    let token_provider = LocalTokenIO::new(Duration::from_secs(60 * 60), "test1234");
     // build services
-    let global_state = Services {
-        auth: auth.clone(),
-        redis: redis_pool.clone(),
-    };
+    let global_state = Arc::new(Services {
+        account_provider: Arc::new(RwLock::new(account_provider)),
+        token_provider: Arc::new(RwLock::new(token_provider.clone())),
+        redis: redis_pool,
+    });
 
     // build axum router
     let app = Router::new()
@@ -46,7 +51,7 @@ async fn main() {
         // --- END authenticated routes
         .layer(from_fn_with_state(
             AuthService {
-                auth: auth.clone(),
+                auth: token_provider,
                 redis: redis_pool.clone(),
             },
             web::auth_layer::auth_layer,
@@ -56,11 +61,7 @@ async fn main() {
             Router::new().nest("/auth", web::auth_router()),
         )
         .with_state(global_state)
-        .layer(from_fn_with_state(pg_pool, axum_tx_layer::sqlx::tx_layer))
-        .layer(from_fn_with_state(
-            redis_pool,
-            axum_tx_layer::redis::tx_layer,
-        ));
+        .layer(from_fn_with_state(pg_pool, axum_tx_layer::sqlx::tx_layer));
 
     // start server
     let addr = SocketAddr::new(hygge_url, 3000);

@@ -1,5 +1,6 @@
-use crate::services::auth::Auth;
 use axum::extract::FromRef;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 pub type RedisPool = deadpool_redis::Pool;
@@ -7,7 +8,8 @@ pub type RedisConnection = deadpool_redis::Connection;
 
 #[derive(Clone, FromRef)]
 pub struct Services {
-    pub auth: Auth,
+    pub token_provider: Arc<RwLock<crate::services::auth::io_provider::LocalTokenIO>>,
+    pub account_provider: Arc<RwLock<crate::services::auth::io_provider::LocalAccountIO>>,
     pub redis: RedisPool,
 }
 

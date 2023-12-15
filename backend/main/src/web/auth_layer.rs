@@ -1,4 +1,5 @@
-use crate::services::auth::Auth;
+use crate::services::auth::io::TokenIO;
+use crate::services::auth::io_provider::LocalTokenIO;
 use crate::types::RedisPool;
 use crate::UserId;
 use axum::async_trait;
@@ -10,7 +11,7 @@ use axum::response::{IntoResponse, Response};
 
 #[derive(Clone)]
 pub struct AuthService {
-    pub auth: Auth,
+    pub auth: LocalTokenIO,
     pub redis: RedisPool,
 }
 pub async fn auth_layer<B>(
@@ -27,7 +28,7 @@ pub async fn auth_layer<B>(
     let Ok(mut conn) = auth.redis.get().await else {
         return StatusCode::UNAUTHORIZED.into_response();
     };
-    let Ok(internal_id) = auth.auth.verify_token(&token.to_string(), &mut conn).await else {
+    let Ok(internal_id) = auth.auth.verify(&token.to_string(), &mut conn).await else {
         return StatusCode::UNAUTHORIZED.into_response();
     };
 

@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 #[derive(Debug, Copy, Clone, sqlx::Type)]
 #[sqlx(type_name = "account_status")]
 #[sqlx(rename_all = "lowercase")]
@@ -8,9 +10,9 @@ pub enum AccountStatus {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
-pub struct Account<InternalId, ExternalId> {
-    pub id: InternalId,
-    pub id_external: ExternalId,
+pub struct Account {
+    pub id: Uuid,
+    pub id_external: String,
     pub hash: String,
     pub status: AccountStatus,
 }
